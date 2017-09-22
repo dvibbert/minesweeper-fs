@@ -12,7 +12,7 @@ module Hint =
     let isHidden (cell:Cell) =
         cell.State = CellState.Hidden
 
-    let flagsSurroundingCell (game:Game) (flags:Set<Cell>) (cell:Cell) =
+    let flagsSurroundingCell game flags (cell:Cell) =
         match (cell.State, cell.SurroundingCount) with
         | (CellState.Exposed, Some count) ->
             let neighbors = Game.getNeighborCells cell game
@@ -23,7 +23,7 @@ module Hint =
             | false -> flags
         | _ -> flags
 
-    let setFlags game:Game =
+    let setFlags game =
         let pairs = Map.toSeq game.Cells
         let cells = Seq.map (fun (_, x) -> x) pairs
         let folder = flagsSurroundingCell game
