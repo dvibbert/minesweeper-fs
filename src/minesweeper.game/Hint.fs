@@ -6,12 +6,20 @@ open Games
 open Commands
 
 module Hint =
-    let flagsSurroundingCell game flags cell =
-        match cell.SurroundingCount with
-        | Some count ->
+    let isPotentialMine (cell:Cell) =
+        cell.State = CellState.Hidden || cell.State = CellState.Flagged
+
+    let isHidden (cell:Cell) =
+        cell.State = CellState.Hidden
+
+    let flagsSurroundingCell (game:Game) (flags:Set<Cell>) (cell:Cell) =
+        match (cell.State, cell.SurroundingCount) with
+        | (CellState.Exposed, Some count) ->
             let neighbors = Game.getNeighborCells cell game
-            match Seq.length neighbors = count with
-            | true -> Set.union flags (Set.ofSeq neighbors)
+            let potentialBombs = Seq.filter isPotentialMine neighbors
+            let hiddenNeighbors = Seq.filter isHidden neighbors
+            match Seq.length potentialBombs = count with
+            | true -> Set.union flags (Set.ofSeq hiddenNeighbors)
             | false -> flags
         | _ -> flags
 
