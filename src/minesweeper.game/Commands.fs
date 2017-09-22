@@ -66,12 +66,12 @@ module Flag =
     let flag x y game = 
         let index = Coordinates.getArrayIndex x y game.GameSize
         let cell = Game.getCell game index
-        let flag, flagDiff = 
+        let f, flagDiff = 
             match cell.State with
             | CellState.Hidden -> Game.setCellState index Flagged, 1
             | CellState.Flagged -> Game.setCellState index Hidden, -1
             | _ -> id, 0
-        let newGame = flag game
+        let newGame = f game
         { newGame with FlagCount = newGame.FlagCount + flagDiff }
 
 
