@@ -71,9 +71,8 @@ let getAction game key =
     | ConsoleKey.UpArrow -> moveUp
     | ConsoleKey.DownArrow -> moveDown
     | ConsoleKey.Q -> quit
-    | ConsoleKey.Spacebar ->
-        sweep x y >> Hint.afterSweep x y
-    | ConsoleKey.A -> sweepAllHiddenNeighbors x y
+    | ConsoleKey.Spacebar -> sweep x y >> Hint.afterSweep x y
+    | ConsoleKey.A -> sweepAllHiddenNeighbors x y >> Hint.afterSweep x y
     | ConsoleKey.F -> flag x y
     | _ -> id
 

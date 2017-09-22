@@ -16,9 +16,9 @@ module Hint =
         match (cell.State, cell.SurroundingCount) with
         | (CellState.Exposed, Some count) ->
             let neighbors = Game.getNeighborCells cell game
-            let potentialBombs = Seq.filter isPotentialMine neighbors
+            let potentialMines = Seq.filter isPotentialMine neighbors
             let hiddenNeighbors = Seq.filter isHidden neighbors
-            match Seq.length potentialBombs = count with
+            match Seq.length potentialMines = count with
             | true -> Set.union flags (Set.ofSeq hiddenNeighbors)
             | false -> flags
         | _ -> flags
@@ -36,3 +36,5 @@ module Hint =
     let afterSweep x y game =
         setFlags game
 
+    let afterSweepAllHiddenNeighbors x y game =
+        setFlags game
