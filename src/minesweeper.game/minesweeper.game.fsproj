@@ -55,6 +55,7 @@
     <Compile Include="Cell.fs" />
     <Compile Include="Games.fs" />
     <Compile Include="Commands.fs" />
+    <Compile Include="Hint.fs" />
     <Content Include="packages.config" />
   </ItemGroup>
   <ItemGroup>
