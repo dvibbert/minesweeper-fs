@@ -31,14 +31,16 @@ module Sweep =
             |> sweepCells surrounding
             |> sweepCells xs
 
-
-    let sweep x y game = 
-        let index = Coordinates.getArrayIndex x y game.GameSize
+    let sweepByIndex index game =
         game 
         |> Game.tryPlaceMines index
         |> sweepCells [index]
         |> Game.testWin
         |> Game.testLoss index
+
+    let sweep x y game = 
+        let index = Coordinates.getArrayIndex x y game.GameSize
+        sweepByIndex index game
     
 
     //sweeps all hidden cells that are neighbors of passed in position.
@@ -63,8 +65,7 @@ module Sweep =
         
 
 module Flag =
-    let flag x y game = 
-        let index = Coordinates.getArrayIndex x y game.GameSize
+    let flagByIndex index game =
         let cell = Game.getCell game index
         let f, flagDiff = 
             match cell.State with
@@ -73,6 +74,10 @@ module Flag =
             | _ -> id, 0
         let newGame = f game
         { newGame with FlagCount = newGame.FlagCount + flagDiff }
+
+    let flag x y game = 
+        let index = Coordinates.getArrayIndex x y game.GameSize
+        flagByIndex index game
 
 
 module Move =

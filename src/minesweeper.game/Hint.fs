@@ -32,7 +32,7 @@ module Hint =
         let folder = flagsSurroundingCell game
         let flags = Seq.fold folder Set.empty cells
         let indexes = Seq.map (fun c -> c.Coords.Index) (Set.toSeq flags)
-        let setFlag = fun g index -> Game.setCellState index Flagged g
+        let setFlag = fun g index -> Flag.flagByIndex index g
         let folded = Seq.fold setFlag game indexes
         folded
 
@@ -53,7 +53,7 @@ module Hint =
         let folder = safeSurroundingCell game
         let flags = Seq.fold folder Set.empty cells
         let indexes = Seq.map (fun c -> c.Coords.Index) (Set.toSeq flags)
-        let clearCell = fun g index -> Game.setCellState index Exposed g
+        let clearCell = fun g index -> Sweep.sweepByIndex index g
         let folded = Seq.fold clearCell game indexes
         folded
 
