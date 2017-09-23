@@ -15,46 +15,59 @@ module Hint =
     let isFlagged (cell:Cell) =
         cell.State = CellState.Flagged
 
-    let flagsSurroundingCell game flags (cell:Cell) =
+    let selectIndex (cell:Cell) =
+        cell.Coords.Index
+
+    let flagsSurroundingCell game flags index =
+        let cell = Game.getCell game index
         match (cell.State, cell.SurroundingCount) with
         | (CellState.Exposed, Some count) ->
             let neighbors = Game.getNeighborCells cell game
             let potentialMines = Seq.filter isPotentialMine neighbors
-            let hiddenNeighbors = Seq.filter isHidden neighbors
             match Seq.length potentialMines = count with
-            | true -> Set.union flags (Set.ofSeq hiddenNeighbors)
+            | true ->
+                neighbors
+                |> Seq.filter isHidden
+                |> Seq.map selectIndex
+                |> Set.ofSeq
+                |> Set.union flags
             | false -> flags
         | _ -> flags
 
     let setFlags game =
         let pairs = Map.toSeq game.Cells
-        let cells = Seq.map (fun (_, x) -> x) pairs
+        let indexes = Seq.map (fun (x, _) -> x) pairs
         let folder = flagsSurroundingCell game
-        let flags = Seq.fold folder Set.empty cells
-        let indexes = Seq.map (fun c -> c.Coords.Index) (Set.toSeq flags)
+        let flags = Seq.fold folder Set.empty indexes
+        let flagIndexes = Set.toSeq flags
         let setFlag = fun g index -> Flag.flagByIndex index g
-        let folded = Seq.fold setFlag game indexes
+        let folded = Seq.fold setFlag game flagIndexes
         folded
 
-    let safeSurroundingCell game safe (cell:Cell) =
+    let safeSurroundingCell game safe index =
+        let cell = Game.getCell game index
         match (cell.State, cell.SurroundingCount) with
         | (CellState.Exposed, Some count) ->
             let neighbors = Game.getNeighborCells cell game
             let flaggedMines = Seq.filter isFlagged neighbors
-            let hiddenNeighbors = Seq.filter isHidden neighbors
             match Seq.length flaggedMines = count with
-            | true -> Set.union safe (Set.ofSeq hiddenNeighbors)
+            | true ->
+                neighbors
+                |> Seq.filter isHidden
+                |> Seq.map selectIndex
+                |> Set.ofSeq
+                |> Set.union safe
             | false -> safe
         | _ -> safe
 
     let clearSafeCells game =
         let pairs = Map.toSeq game.Cells
-        let cells = Seq.map (fun (_, x) -> x) pairs
+        let indexes = Seq.map (fun (x, _) -> x) pairs
         let folder = safeSurroundingCell game
-        let flags = Seq.fold folder Set.empty cells
-        let indexes = Seq.map (fun c -> c.Coords.Index) (Set.toSeq flags)
+        let safe = Seq.fold folder Set.empty indexes
+        let safeIndexes = Set.toSeq safe
         let clearCell = fun g index -> Sweep.sweepByIndex index g
-        let folded = Seq.fold clearCell game indexes
+        let folded = Seq.fold clearCell game safeIndexes
         folded
 
     let afterSweep x y game =
