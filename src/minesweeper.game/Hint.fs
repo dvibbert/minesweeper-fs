@@ -5,6 +5,20 @@ open Cells
 open Games
 open Commands
 
+type Progress = {
+    Game: Game
+    CellsSwept: Set<int>
+    CellsFlagged: Set<int>
+}
+
+type NextActions = {
+    CellsToSweep: Set<int>
+    CellsToFlag: Set<int>
+}
+
+type Strategy = Progress -> NextActions -> NextActions
+type Apply = Game -> NextActions -> Progress
+
 module Hint =
     let isPotentialMine (cell:Cell) =
         cell.State = CellState.Hidden || cell.State = CellState.Flagged
@@ -15,8 +29,22 @@ module Hint =
     let isFlagged (cell:Cell) =
         cell.State = CellState.Flagged
 
+    let isExposed (cell:Cell) =
+        cell.State = CellState.Exposed
+
     let selectIndex (cell:Cell) =
         cell.Coords.Index
+
+    let expand (game:Game) (indexes:Set<int>) =
+        let includeNeighborCells cell =
+            Game.getNeighborCells cell game
+            |> Seq.append [cell]
+        indexes
+            |> Seq.map (Game.getCell game)
+            |> Seq.collect includeNeighborCells
+            |> Seq.filter isExposed
+            |> Seq.map selectIndex
+            |> Set.ofSeq
 
     let flagsSurroundingCell game flags index =
         let cell = Game.getCell game index
@@ -33,6 +61,15 @@ module Hint =
                 |> Set.union flags
             | false -> flags
         | _ -> flags
+
+    let flagStrategy (progress:Progress) (nextActions:NextActions) =
+        let neighbors = expand progress.Game progress.CellsSwept
+        let findFlags = flagsSurroundingCell progress.Game
+        let flags =
+            neighbors
+            |> Seq.fold findFlags Set.empty
+            |> Set.union nextActions.CellsToFlag
+        { nextActions with CellsToFlag = flags }
 
     let setFlags game =
         let pairs = Map.toSeq game.Cells
@@ -69,6 +106,21 @@ module Hint =
         let clearCell = fun g index -> Sweep.sweepByIndex index g
         let folded = Seq.fold clearCell game safeIndexes
         folded
+
+    let apply (game:Game) (nextActions:NextActions) =
+        let sweepActions =
+            nextActions.CellsToSweep
+            |> Seq.map Sweep.sweepByIndex
+        let flagActions =
+            nextActions.CellsToFlag
+            |> Seq.map Flag.flagByIndex
+        let actions = Seq.append sweepActions flagActions
+        let endGame = Seq.reduce (>>) actions game
+        {
+            Game = endGame
+            CellsSwept = nextActions.CellsToSweep
+            CellsFlagged = nextActions.CellsToFlag
+        }
 
     let afterSweep x y game =
         game |> setFlags |> clearSafeCells
