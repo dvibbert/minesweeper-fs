@@ -58,9 +58,10 @@ module Hint =
                 previousGeneration
                     |> Seq.collect neighborsOfZeros
                     |> Seq.filter notInSet
-            match Seq.isEmpty nextGeneration with
-            | false -> expand nextGeneration (Set.union previousIndexes (Set.ofSeq (Seq.map selectIndex nextGeneration)))
-            | true -> previousIndexes
+            if Seq.isEmpty nextGeneration then
+                previousIndexes
+            else
+                expand nextGeneration (Set.union previousIndexes (Set.ofSeq (Seq.map selectIndex nextGeneration)))
         expand (Seq.map (Game.getCell game) indexes) indexes
 
     let private flagsSurroundingCell game flags index =
@@ -69,14 +70,13 @@ module Hint =
         | (CellState.Exposed, Some count) ->
             let neighbors = Game.getNeighborCells cell game
             let potentialMines = Seq.filter isPotentialMine neighbors
-            match Seq.length potentialMines = count with
-            | true ->
+            if Seq.length potentialMines = count then
                 neighbors
                 |> Seq.filter isHidden
                 |> Seq.map selectIndex
                 |> Set.ofSeq
                 |> Set.union flags
-            | false -> flags
+            else flags
         | _ -> flags
 
     let private flagStrategy progress nextActions =
@@ -94,14 +94,13 @@ module Hint =
         | (CellState.Exposed, Some count) ->
             let neighbors = Game.getNeighborCells cell game
             let flaggedMines = Seq.filter isFlagged neighbors
-            match Seq.length flaggedMines = count with
-            | true ->
+            if Seq.length flaggedMines = count then
                 neighbors
                 |> Seq.filter isHidden
                 |> Seq.map selectIndex
                 |> Set.ofSeq
                 |> Set.union safe
-            | false -> safe
+            else safe
         | _ -> safe
 
     let private safeStrategy progress nextActions =
@@ -112,6 +111,37 @@ module Hint =
             |> Seq.fold findSafe Set.empty
             |> Set.union nextActions.CellsToSweep
         { nextActions with CellsToSweep = safe }
+
+    let private exclusiveSurroundingPair game nextActions index_a index_b =
+        let remainingFlags cell =
+            let flags =
+                Game.getNeighborCells cell game
+                |> Seq.filter isFlagged
+            match cell.SurroundingCount with
+            | Some count -> count - Seq.length flags
+            | None -> cell.TotalNeighbors - Seq.length flags
+        let hiddenNeighbors cell =
+            Game.getNeighborCells cell game
+            |> Seq.filter isHidden
+            |> Set.ofSeq
+        let cell_a = Game.getCell game index_a
+        let cell_b = Game.getCell game index_b
+        let difference = (remainingFlags cell_b) - (remainingFlags cell_a)
+        let hidden_a = hiddenNeighbors cell_a
+        let hidden_b = hiddenNeighbors cell_b
+        let exclusive_b = Set.difference hidden_b hidden_a
+        if exclusive_b.Count = difference then
+            {
+                CellsToSweep =
+                    Set.difference hidden_a hidden_b
+                    |> Set.map selectIndex
+                    |> Set.union nextActions.CellsToSweep
+                CellsToFlag =
+                    exclusive_b
+                    |> Set.map selectIndex
+                    |> Set.union nextActions.CellsToFlag
+            }
+        else nextActions
 
     let private allStrategies progress =
         {
@@ -138,9 +168,10 @@ module Hint =
 
     let rec private run progress =
         let nextActions = allStrategies progress
-        match (Set.isEmpty nextActions.CellsToFlag) && (Set.isEmpty nextActions.CellsToSweep) with
-        | false -> apply progress.Game nextActions |> run
-        | true -> progress.Game
+        if (Set.isEmpty nextActions.CellsToFlag) && (Set.isEmpty nextActions.CellsToSweep) then
+            progress.Game
+        else
+            apply progress.Game nextActions |> run
 
     let afterSweep x y game =
         let index = Coordinates.getArrayIndex x y game.GameSize
