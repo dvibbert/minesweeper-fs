@@ -35,7 +35,7 @@ module Hint =
     let selectIndex (cell:Cell) =
         cell.Coords.Index
 
-    let expand (game:Game) (indexes:Set<int>) =
+    let withExposedNeighbors (game:Game) (indexes:Set<int>) =
         let includeNeighborCells cell =
             Game.getNeighborCells cell game
             |> Seq.append [cell]
@@ -45,6 +45,23 @@ module Hint =
             |> Seq.filter isExposed
             |> Seq.map selectIndex
             |> Set.ofSeq
+
+    let withNeighborsOfZeros (game:Game) (indexes:Set<int>) =
+        let neighborsOfZeros (cell:Cell) =
+            match (cell.State, cell.SurroundingCount) with
+            | (CellState.Exposed, Some 0) ->
+                Game.getNeighborCells cell game
+            | _ -> Seq.empty<Cell>
+        let rec expand (previousGeneration:seq<Cell>) (previousIndexes:Set<int>) =
+            let notInSet (cell:Cell) = not (Set.contains cell.Coords.Index previousIndexes)
+            let nextGeneration =
+                previousGeneration
+                    |> Seq.collect neighborsOfZeros
+                    |> Seq.filter notInSet
+            match Seq.isEmpty nextGeneration with
+            | false -> expand nextGeneration (Set.union previousIndexes (Set.ofSeq (Seq.map selectIndex nextGeneration)))
+            | true -> previousIndexes
+        expand (Seq.map (Game.getCell game) indexes) indexes
 
     let flagsSurroundingCell game flags index =
         let cell = Game.getCell game index
@@ -63,7 +80,7 @@ module Hint =
         | _ -> flags
 
     let flagStrategy (progress:Progress) (nextActions:NextActions) =
-        let neighbors = expand progress.Game progress.CellsSwept
+        let neighbors = withExposedNeighbors progress.Game progress.CellsSwept
         let findFlags = flagsSurroundingCell progress.Game
         let flags =
             neighbors
@@ -118,7 +135,7 @@ module Hint =
         let endGame = Seq.reduce (>>) actions game
         {
             Game = endGame
-            CellsSwept = nextActions.CellsToSweep
+            CellsSwept = withNeighborsOfZeros game nextActions.CellsToSweep
             CellsFlagged = nextActions.CellsToFlag
         }
 
