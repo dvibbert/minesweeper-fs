@@ -150,7 +150,8 @@ module Hint =
             |> Seq.filter isExposed
             |> Seq.collect (both cell)
         let findExclusive = exclusiveSurroundingPair progress.Game
-        progress.CellsSwept
+        Set.union progress.CellsSwept progress.CellsFlagged
+            |> withExposedNeighbors progress.Game
             |> Seq.map (Game.getCell progress.Game)
             |> Seq.collect pairs
             |> Set.ofSeq
