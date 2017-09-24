@@ -107,7 +107,8 @@ module Hint =
     let private safeStrategy progress nextActions =
         let findSafe = safeSurroundingCell progress.Game
         let safe =
-            progress.CellsSwept
+            withExposedNeighbors progress.Game progress.CellsFlagged
+            |> Set.union progress.CellsSwept
             |> Seq.fold findSafe Set.empty
             |> Set.union nextActions.CellsToSweep
         { nextActions with CellsToSweep = safe }
