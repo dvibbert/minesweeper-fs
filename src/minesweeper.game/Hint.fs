@@ -20,22 +20,22 @@ type Strategy = Progress -> NextActions -> NextActions
 type Apply = Game -> NextActions -> Progress
 
 module Hint =
-    let isPotentialMine (cell:Cell) =
+    let private isPotentialMine (cell:Cell) =
         cell.State = CellState.Hidden || cell.State = CellState.Flagged
 
-    let isHidden (cell:Cell) =
+    let private isHidden (cell:Cell) =
         cell.State = CellState.Hidden
 
-    let isFlagged (cell:Cell) =
+    let private isFlagged (cell:Cell) =
         cell.State = CellState.Flagged
 
-    let isExposed (cell:Cell) =
+    let private isExposed (cell:Cell) =
         cell.State = CellState.Exposed
 
-    let selectIndex (cell:Cell) =
+    let private selectIndex (cell:Cell) =
         cell.Coords.Index
 
-    let withExposedNeighbors (game:Game) (indexes:Set<int>) =
+    let private withExposedNeighbors game indexes =
         let includeNeighborCells cell =
             Game.getNeighborCells cell game
             |> Seq.append [cell]
@@ -46,14 +46,14 @@ module Hint =
             |> Seq.map selectIndex
             |> Set.ofSeq
 
-    let withNeighborsOfZeros (game:Game) (indexes:Set<int>) =
+    let private withNeighborsOfZeros game indexes =
         let neighborsOfZeros (cell:Cell) =
             match (cell.State, cell.SurroundingCount) with
             | (CellState.Exposed, Some 0) ->
                 Game.getNeighborCells cell game
             | _ -> Seq.empty<Cell>
-        let rec expand (previousGeneration:seq<Cell>) (previousIndexes:Set<int>) =
-            let notInSet (cell:Cell) = not (Set.contains cell.Coords.Index previousIndexes)
+        let rec expand previousGeneration previousIndexes =
+            let notInSet cell = not (Set.contains cell.Coords.Index previousIndexes)
             let nextGeneration =
                 previousGeneration
                     |> Seq.collect neighborsOfZeros
@@ -63,7 +63,7 @@ module Hint =
             | true -> previousIndexes
         expand (Seq.map (Game.getCell game) indexes) indexes
 
-    let flagsSurroundingCell game flags index =
+    let private flagsSurroundingCell game flags index =
         let cell = Game.getCell game index
         match (cell.State, cell.SurroundingCount) with
         | (CellState.Exposed, Some count) ->
@@ -79,7 +79,7 @@ module Hint =
             | false -> flags
         | _ -> flags
 
-    let flagStrategy (progress:Progress) (nextActions:NextActions) =
+    let private flagStrategy progress nextActions =
         let neighbors = withExposedNeighbors progress.Game progress.CellsSwept
         let findFlags = flagsSurroundingCell progress.Game
         let flags =
@@ -88,17 +88,7 @@ module Hint =
             |> Set.union nextActions.CellsToFlag
         { nextActions with CellsToFlag = flags }
 
-    let setFlags game =
-        let pairs = Map.toSeq game.Cells
-        let indexes = Seq.map (fun (x, _) -> x) pairs
-        let folder = flagsSurroundingCell game
-        let flags = Seq.fold folder Set.empty indexes
-        let flagIndexes = Set.toSeq flags
-        let setFlag = fun g index -> Flag.flagByIndex index g
-        let folded = Seq.fold setFlag game flagIndexes
-        folded
-
-    let safeSurroundingCell game safe index =
+    let private safeSurroundingCell game safe index =
         let cell = Game.getCell game index
         match (cell.State, cell.SurroundingCount) with
         | (CellState.Exposed, Some count) ->
@@ -114,24 +104,14 @@ module Hint =
             | false -> safe
         | _ -> safe
 
-    let clearSafeCells game =
-        let pairs = Map.toSeq game.Cells
-        let indexes = Seq.map (fun (x, _) -> x) pairs
-        let folder = safeSurroundingCell game
-        let safe = Seq.fold folder Set.empty indexes
-        let safeIndexes = Set.toSeq safe
-        let clearCell = fun g index -> Sweep.sweepByIndex index g
-        let folded = Seq.fold clearCell game safeIndexes
-        folded
-
-    let allStrategies (progress:Progress) =
+    let private allStrategies progress =
         {
             CellsToSweep = Set.empty
             CellsToFlag = Set.empty
         }
         |> flagStrategy progress
 
-    let apply (game:Game) (nextActions:NextActions) =
+    let private apply game nextActions =
         let sweepActions =
             nextActions.CellsToSweep
             |> Seq.map Sweep.sweepByIndex
@@ -146,7 +126,7 @@ module Hint =
             CellsFlagged = nextActions.CellsToFlag
         }
 
-    let rec run (progress:Progress) =
+    let rec private run progress =
         let nextActions = allStrategies progress
         match (Set.isEmpty nextActions.CellsToFlag) && (Set.isEmpty nextActions.CellsToSweep) with
         | false -> run (apply progress.Game nextActions)
