@@ -122,14 +122,14 @@ module Hint =
         let endGame = Seq.reduce (>>) actions game
         {
             Game = endGame
-            CellsSwept = withNeighborsOfZeros game nextActions.CellsToSweep
+            CellsSwept = withNeighborsOfZeros endGame nextActions.CellsToSweep
             CellsFlagged = nextActions.CellsToFlag
         }
 
     let rec private run progress =
         let nextActions = allStrategies progress
         match (Set.isEmpty nextActions.CellsToFlag) && (Set.isEmpty nextActions.CellsToSweep) with
-        | false -> run (apply progress.Game nextActions)
+        | false -> apply progress.Game nextActions |> run
         | true -> progress.Game
 
     let afterSweep x y game =
