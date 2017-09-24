@@ -104,12 +104,21 @@ module Hint =
             | false -> safe
         | _ -> safe
 
+    let private safeStrategy progress nextActions =
+        let findSafe = safeSurroundingCell progress.Game
+        let safe =
+            progress.CellsSwept
+            |> Seq.fold findSafe Set.empty
+            |> Set.union nextActions.CellsToSweep
+        { nextActions with CellsToSweep = safe }
+
     let private allStrategies progress =
         {
             CellsToSweep = Set.empty
             CellsToFlag = Set.empty
         }
         |> flagStrategy progress
+        |> safeStrategy progress
 
     let private apply game nextActions =
         let sweepActions =
