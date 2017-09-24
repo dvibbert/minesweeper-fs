@@ -112,7 +112,8 @@ module Hint =
             |> Set.union nextActions.CellsToSweep
         { nextActions with CellsToSweep = safe }
 
-    let private exclusiveSurroundingPair game nextActions index_a index_b =
+    let private exclusiveSurroundingPair game nextActions pair =
+        let (cell_a, cell_b) = pair
         let remainingFlags cell =
             let flags =
                 Game.getNeighborCells cell game
@@ -124,8 +125,6 @@ module Hint =
             Game.getNeighborCells cell game
             |> Seq.filter isHidden
             |> Set.ofSeq
-        let cell_a = Game.getCell game index_a
-        let cell_b = Game.getCell game index_b
         let difference = (remainingFlags cell_b) - (remainingFlags cell_a)
         let hidden_a = hiddenNeighbors cell_a
         let hidden_b = hiddenNeighbors cell_b
@@ -143,6 +142,20 @@ module Hint =
             }
         else nextActions
 
+    let private exclusiveStrategy progress nextActions =
+        let both cell neighbor =
+            [ (cell, neighbor); (neighbor, cell) ]
+        let pairs cell =
+            Game.getNeighborCells cell progress.Game
+            |> Seq.filter isExposed
+            |> Seq.collect (both cell)
+        let findExclusive = exclusiveSurroundingPair progress.Game
+        progress.CellsSwept
+            |> Seq.map (Game.getCell progress.Game)
+            |> Seq.collect pairs
+            |> Set.ofSeq
+            |> Seq.fold findExclusive nextActions
+
     let private allStrategies progress =
         {
             CellsToSweep = Set.empty
@@ -150,6 +163,7 @@ module Hint =
         }
         |> flagStrategy progress
         |> safeStrategy progress
+        |> exclusiveStrategy progress
 
     let private apply game nextActions =
         let sweepActions =
