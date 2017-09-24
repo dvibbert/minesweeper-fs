@@ -124,6 +124,13 @@ module Hint =
         let folded = Seq.fold clearCell game safeIndexes
         folded
 
+    let allStrategies (progress:Progress) =
+        {
+            CellsToSweep = Set.empty
+            CellsToFlag = Set.empty
+        }
+        |> flagStrategy progress
+
     let apply (game:Game) (nextActions:NextActions) =
         let sweepActions =
             nextActions.CellsToSweep
@@ -139,8 +146,45 @@ module Hint =
             CellsFlagged = nextActions.CellsToFlag
         }
 
+    let rec run (progress:Progress) =
+        let nextActions = allStrategies progress
+        match (Set.isEmpty nextActions.CellsToFlag) && (Set.isEmpty nextActions.CellsToSweep) with
+        | false -> run (apply progress.Game nextActions)
+        | true -> progress.Game
+
     let afterSweep x y game =
-        game |> setFlags |> clearSafeCells
+        let index = Coordinates.getArrayIndex x y game.GameSize
+        let progress =
+            {
+                Game = game
+                CellsSwept =
+                    [index]
+                    |> Set.ofSeq
+                    |> withNeighborsOfZeros game
+                CellsFlagged = Set.empty
+            }
+        run progress
 
     let afterSweepAllHiddenNeighbors x y game =
-        game |> setFlags |> clearSafeCells
+        let index = Coordinates.getArrayIndex x y game.GameSize
+        let progress =
+            {
+                Game = game
+                CellsSwept =
+                    [index]
+                    |> Set.ofSeq
+                    |> withExposedNeighbors game
+                    |> withNeighborsOfZeros game
+                CellsFlagged = Set.empty
+            }
+        run progress
+
+    let afterFlag x y game =
+        let index = Coordinates.getArrayIndex x y game.GameSize
+        let progress =
+            {
+                Game = game
+                CellsSwept = Set.empty
+                CellsFlagged = Set.ofSeq [index]
+            }
+        run progress
