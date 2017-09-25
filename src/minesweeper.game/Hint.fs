@@ -61,8 +61,14 @@ module Hint =
             if Seq.isEmpty nextGeneration then
                 previousIndexes
             else
-                expand nextGeneration (Set.union previousIndexes (Set.ofSeq (Seq.map selectIndex nextGeneration)))
-        expand (Seq.map (Game.getCell game) indexes) indexes
+                nextGeneration
+                |> Seq.map selectIndex
+                |> Set.ofSeq
+                |> Set.union previousIndexes
+                |> expand nextGeneration
+        let getCell = Game.getCell game
+        let firstGeneration = Seq.map getCell indexes
+        expand firstGeneration indexes
 
     let private flagsSurroundingCell game flags index =
         let cell = Game.getCell game index
